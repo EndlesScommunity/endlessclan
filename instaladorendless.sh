@@ -28,12 +28,21 @@ fi
 echo "Actualizando el sistema..."
 sudo apt update && sudo apt upgrade -y
 
+# Instalar dependencias básicas
+sudo apt install curl build-essential ufw -y
+
 # Instalar Nginx si no está instalado
 if ! command -v nginx &> /dev/null
 then
     echo "Nginx no está instalado. Instalando Nginx..."
     sudo apt install nginx -y
 fi
+
+# Configurar firewall (UFW)
+echo "Configurando UFW..."
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
 
 # Configurar Nginx para el dominio
 echo "Configurando Nginx para el dominio $DOMAIN..."
@@ -108,12 +117,12 @@ const { state, saveCreds } = useMultiFileAuthState(sessionDirectory);
 
 const sock = makeWASocket({
     auth: state,
-    printQRInTerminal: true # Mostrar QR en la terminal para escanearlo
+    printQRInTerminal: true // Mostrar QR en la terminal para escanearlo
 });
 
 sock.ev.on('creds.update', saveCreds);
 
-# Ruta para enviar mensajes
+// Ruta para enviar mensajes
 app.post('/send-message', async (req, res) => {
     const { to, message } = req.body;
     try {
@@ -124,11 +133,11 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
-# Ruta para login (simplificada)
+// Ruta para login (simplificada)
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    # Lógica de autenticación simplificada
-    const user = { id: 1, username: 'user', password: '$2a$10$...' }; # Ejemplo de usuario
+    // Lógica de autenticación simplificada
+    const user = { id: 1, username: 'user', password: '$2a$10$...' }; // Ejemplo de usuario
     if (user && bcrypt.compareSync(password, user.password)) {
         const token = jwt.sign({ id: user.id }, 'your_secret_key');
         res.json({ token });
@@ -137,7 +146,7 @@ app.post('/login', async (req, res) => {
     }
 });
 
-# Middleware de autenticación
+// Middleware de autenticación
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -151,7 +160,7 @@ function authenticateToken(req, res, next) {
 
 app.use(authenticateToken);
 
-# Configuración de AdminJS
+// Configuración de AdminJS
 const adminJs = new AdminJS({
     databases: [],
     rootPath: '/admin',
@@ -166,6 +175,11 @@ app.listen(port, () => {
 });
 EOF
 
+# Instalar Certbot y configurar SSL con Let's Encrypt
+echo "Instalando Certbot para SSL..."
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN --email $EMAIL --agree-tos --no-eff-email
+
 # Iniciar el servidor de Node.js
 echo "Iniciando el servidor..."
 cd ~/whatsapp-bot
@@ -175,6 +189,6 @@ echo ""
 echo "========================================"
 echo "       Instalación completa"
 echo "========================================"
-echo "El servidor está corriendo en http://$DOMAIN"
-echo "El dashboard de AdminJS está disponible en http://$DOMAIN/admin"
+echo "El servidor está corriendo en https://$DOMAIN"
+echo "El dashboard de AdminJS está disponible en https://$DOMAIN/admin"
 echo "Revisa el archivo server.log para ver los detalles de ejecución."
