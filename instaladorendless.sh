@@ -42,7 +42,7 @@ fi
 echo "Configurando UFW..."
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
-sudo ufw enable
+sudo ufw --force enable
 
 # Configurar Nginx para el dominio
 echo "Configurando Nginx para el dominio $DOMAIN..."
@@ -96,6 +96,9 @@ npm init -y
 echo "Instalando dependencias..."
 npm install express @adiwajshing/baileys body-parser jsonwebtoken bcryptjs adminjs @adminjs/express
 
+# Generar una clave secreta aleatoria
+SECRET_KEY=$(openssl rand -base64 32)
+
 # Crear archivo del servidor
 echo "Creando archivo del servidor..."
 cat > server.js <<EOF
@@ -108,6 +111,9 @@ const AdminJS = require('adminjs');
 const AdminJSExpress = require('@adminjs/express');
 const app = express();
 const port = 3000;
+
+// Clave secreta generada dinámicamente
+const secretKey = '$SECRET_KEY';
 
 app.use(bodyParser.json());
 
@@ -137,9 +143,9 @@ app.post('/send-message', async (req, res) => {
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     // Lógica de autenticación simplificada
-    const user = { id: 1, username: 'user', password: '$2a$10$...' }; // Ejemplo de usuario
+    const user = { id: 1, username: 'user', password: '\$2a\$10\$...' }; // Ejemplo de usuario
     if (user && bcrypt.compareSync(password, user.password)) {
-        const token = jwt.sign({ id: user.id }, 'your_secret_key');
+        const token = jwt.sign({ id: user.id }, secretKey);
         res.json({ token });
     } else {
         res.status(401).send('Unauthorized');
@@ -151,7 +157,7 @@ function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (token == null) return res.sendStatus(401);
-    jwt.verify(token, 'your_secret_key', (err, user) => {
+    jwt.verify(token, secretKey, (err, user) => {
         if (err) return res.sendStatus(403);
         req.user = user;
         next();
